@@ -17,4 +17,6 @@ ln -sfn /data/.openclaw /home/openclaw/.openclaw
 
 chown -R openclaw:openclaw /opt/antfarm
 
+gosu openclaw node /opt/antfarm/dist/server/daemon.js 3333 &
+
 exec gosu openclaw node src/server.js
