@@ -11,4 +11,10 @@ fi
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
+mkdir -p /data/.openclaw
+chown openclaw:openclaw /data/.openclaw
+ln -sfn /data/.openclaw /home/openclaw/.openclaw
+
+chown -R openclaw:openclaw /opt/antfarm
+
 exec gosu openclaw node src/server.js

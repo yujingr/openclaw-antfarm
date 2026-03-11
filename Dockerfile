@@ -14,6 +14,11 @@ RUN apt-get update \
 
 RUN npm install -g openclaw@2026.3.8
 
+RUN git clone --branch v0.5.1 --depth 1 https://github.com/snarktank/antfarm.git /opt/antfarm \
+  && cd /opt/antfarm \
+  && npm install --no-fund --no-audit \
+  && npm run build
+
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
