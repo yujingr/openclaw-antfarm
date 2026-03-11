@@ -1145,6 +1145,24 @@ proxy.on("proxyReqWs", (proxyReq, req, socket, options, head) => {
   proxyReq.setHeader("Origin", PROXY_ORIGIN);
 });
 
+const antfarmProxy = httpProxy.createProxyServer({
+  target: "http://127.0.0.1:3333",
+  xfwd: true,
+  changeOrigin: true,
+});
+antfarmProxy.on("error", (err, _req, res) => {
+  if (res && !res.headersSent) {
+    res.writeHead(503, { "Content-Type": "text/plain" });
+    res.end("Antfarm dashboard unavailable. It may still be starting.");
+  }
+});
+
+app.use("/antfarm", requireSetupAuth, (req, res) => {
+  req.url = req.url || "/";
+  if (req.url === "") req.url = "/";
+  antfarmProxy.web(req, res);
+});
+
 app.use(async (req, res) => {
   if (!isConfigured() && !req.path.startsWith("/setup")) {
     return res.redirect("/setup");
