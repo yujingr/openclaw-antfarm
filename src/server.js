@@ -1145,22 +1145,41 @@ proxy.on("proxyReqWs", (proxyReq, req, socket, options, head) => {
   proxyReq.setHeader("Origin", PROXY_ORIGIN);
 });
 
-const antfarmProxy = httpProxy.createProxyServer({
-  target: "http://127.0.0.1:3333",
-  xfwd: true,
-  changeOrigin: true,
-});
-antfarmProxy.on("error", (err, _req, res) => {
-  if (res && !res.headersSent) {
-    res.writeHead(503, { "Content-Type": "text/plain" });
-    res.end("Antfarm dashboard unavailable. It may still be starting.");
+const portProxyCache = new Map();
+
+function getPortProxy(port) {
+  if (portProxyCache.has(port)) return portProxyCache.get(port);
+  const p = httpProxy.createProxyServer({
+    target: `http://127.0.0.1:${port}`,
+    xfwd: true,
+    changeOrigin: true,
+    proxyTimeout: 30_000,
+    timeout: 30_000,
+  });
+  p.on("error", (err, _req, res) => {
+    if (res && !res.headersSent) {
+      res.writeHead(503, { "Content-Type": "text/plain" });
+      res.end(`Port ${port} unavailable: ${err.message}`);
+    }
+  });
+  portProxyCache.set(port, p);
+  return p;
+}
+
+app.use("/port/:port", requireSetupAuth, (req, res) => {
+  const port = parseInt(req.params.port, 10);
+  if (isNaN(port) || port < 1024 || port > 65535 || port === PORT) {
+    return res.status(400).type("text/plain").send(`Invalid port: ${req.params.port}`);
   }
+  req.url = req.url || "/";
+  if (req.url === "") req.url = "/";
+  getPortProxy(port).web(req, res);
 });
 
 app.use("/antfarm", requireSetupAuth, (req, res) => {
   req.url = req.url || "/";
   if (req.url === "") req.url = "/";
-  antfarmProxy.web(req, res);
+  getPortProxy(3333).web(req, res);
 });
 
 app.use(async (req, res) => {
@@ -1243,6 +1262,18 @@ server.on("upgrade", async (req, socket, head) => {
     tuiWss.handleUpgrade(req, socket, head, (ws) => {
       tuiWss.emit("connection", ws, req);
     });
+    return;
+  }
+
+  const portMatch = url.pathname.match(/^\/port\/(\d+)(\/.*)?$/);
+  if (portMatch) {
+    const port = parseInt(portMatch[1], 10);
+    if (port >= 1024 && port <= 65535 && port !== PORT) {
+      req.url = portMatch[2] || "/";
+      getPortProxy(port).ws(req, socket, head);
+      return;
+    }
+    socket.destroy();
     return;
   }
 
