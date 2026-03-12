@@ -384,13 +384,14 @@ function extractSubdomainPort(host) {
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
 
 app.use((req, res, next) => {
   const port = extractSubdomainPort(req.headers.host);
   if (port === null) return next();
   getPortProxy(port).web(req, res);
 });
+
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/styles.css", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "src", "public", "styles.css"));
