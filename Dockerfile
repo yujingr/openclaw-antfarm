@@ -17,10 +17,7 @@ RUN npm install -g openclaw@2026.3.8
 RUN git clone --branch v0.5.1 --depth 1 https://github.com/snarktank/antfarm.git /opt/antfarm \
   && cd /opt/antfarm \
   && npm install --no-fund --no-audit \
-  && npm run build \
-  && sed -i "s|const API = '';|const API = '/antfarm';|" /opt/antfarm/dist/server/index.html \
-  && sed -i "s|url('/fonts/|url('/antfarm/fonts/|g" /opt/antfarm/dist/server/index.html \
-  && sed -i 's|src="/logo.jpeg"|src="/antfarm/logo.jpeg"|g' /opt/antfarm/dist/server/index.html
+  && npm run build
 
 WORKDIR /app
 
