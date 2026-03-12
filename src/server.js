@@ -389,10 +389,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
   const port = extractSubdomainPort(req.headers.host);
   if (port === null) return next();
-  if (!SETUP_PASSWORD) return res.status(503).type("text/plain").send("SETUP_PASSWORD not set.");
-  requireSetupAuth(req, res, () => {
-    getPortProxy(port).web(req, res);
-  });
+  getPortProxy(port).web(req, res);
 });
 
 app.get("/styles.css", (_req, res) => {
