@@ -1188,22 +1188,6 @@ function getPortProxy(port) {
   return p;
 }
 
-app.use("/port/:port", requireSetupAuth, (req, res) => {
-  const port = parseInt(req.params.port, 10);
-  if (isNaN(port) || port < 1024 || port > 65535 || port === PORT) {
-    return res.status(400).type("text/plain").send(`Invalid port: ${req.params.port}`);
-  }
-  req.url = req.url || "/";
-  if (req.url === "") req.url = "/";
-  getPortProxy(port).web(req, res);
-});
-
-app.use("/antfarm", requireSetupAuth, (req, res) => {
-  req.url = req.url || "/";
-  if (req.url === "") req.url = "/";
-  getPortProxy(3333).web(req, res);
-});
-
 app.use(async (req, res) => {
   if (!isConfigured() && !req.path.startsWith("/setup")) {
     return res.redirect("/setup");
@@ -1293,17 +1277,7 @@ server.on("upgrade", async (req, socket, head) => {
     return;
   }
 
-  const portMatch = url.pathname.match(/^\/port\/(\d+)(\/.*)?$/);
-  if (portMatch) {
-    const port = parseInt(portMatch[1], 10);
-    if (port >= 1024 && port <= 65535 && port !== PORT) {
-      req.url = portMatch[2] || "/";
-      getPortProxy(port).ws(req, socket, head);
-      return;
-    }
-    socket.destroy();
-    return;
-  }
+
 
   if (!isConfigured()) {
     socket.destroy();
