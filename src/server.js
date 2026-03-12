@@ -369,9 +369,31 @@ function requireSetupAuth(req, res, next) {
   return next();
 }
 
+const PORT_PROXY_DOMAIN = process.env.PORT_PROXY_DOMAIN?.trim() || "";
+const PORT_PROXY_SUFFIX = PORT_PROXY_DOMAIN ? `.${PORT_PROXY_DOMAIN}` : "";
+
+function extractSubdomainPort(host) {
+  if (!PORT_PROXY_SUFFIX || !host) return null;
+  const h = host.replace(/:\d+$/, "");
+  if (!h.endsWith(PORT_PROXY_SUFFIX)) return null;
+  const sub = h.slice(0, -PORT_PROXY_SUFFIX.length);
+  const port = parseInt(sub, 10);
+  if (isNaN(port) || port < 1024 || port > 65535 || port === PORT || String(port) !== sub) return null;
+  return port;
+}
+
 const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
+
+app.use((req, res, next) => {
+  const port = extractSubdomainPort(req.headers.host);
+  if (port === null) return next();
+  if (!SETUP_PASSWORD) return res.status(503).type("text/plain").send("SETUP_PASSWORD not set.");
+  requireSetupAuth(req, res, () => {
+    getPortProxy(port).web(req, res);
+  });
+});
 
 app.get("/styles.css", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "src", "public", "styles.css"));
@@ -1239,6 +1261,12 @@ const tuiWss = createTuiWebSocketServer(server);
 
 server.on("upgrade", async (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  const subPort = extractSubdomainPort(req.headers.host);
+  if (subPort !== null) {
+    getPortProxy(subPort).ws(req, socket, head);
+    return;
+  }
 
   if (url.pathname === "/tui/ws") {
     if (!ENABLE_WEB_TUI) {
